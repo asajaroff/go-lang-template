@@ -1,9 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/asajaroff/go-lang-template/internal/config"
+	"github.com/asajaroff/go-lang-template/internal/health"
 	"github.com/spf13/cobra"
 )
 
@@ -30,6 +37,53 @@ var rootCmd = &cobra.Command{
 		fmt.Printf("Server: %s:%d\n", cfg.Server.Host, cfg.Server.Port)
 		fmt.Printf("Database: %s@%s:%d/%s\n", cfg.Database.User, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
 		fmt.Printf("Log Level: %s\n", cfg.Log.Level)
+
+		// Set up health check handler
+		// For now, we don't have database connectivity, so we'll use an empty checker list
+		healthHandler := health.NewHandler([]health.Checker{})
+
+		// Set up HTTP routes
+		mux := http.NewServeMux()
+		mux.HandleFunc("/healthz/liveness", healthHandler.Liveness)
+		mux.HandleFunc("/healthz/readiness", healthHandler.Readiness)
+
+		// Create HTTP server
+		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+		server := &http.Server{
+			Addr:    addr,
+			Handler: mux,
+		}
+
+		// Start server in a goroutine
+		serverErr := make(chan error, 1)
+		go func() {
+			fmt.Printf("Starting HTTP server on %s\n", addr)
+			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				serverErr <- err
+			}
+		}()
+
+		// Wait for interrupt signal or server error
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+		select {
+		case err := <-serverErr:
+			return fmt.Errorf("server error: %w", err)
+		case sig := <-quit:
+			fmt.Printf("\nReceived signal: %s\n", sig)
+		}
+
+		// Graceful shutdown
+		fmt.Println("Shutting down server...")
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		if err := server.Shutdown(ctx); err != nil {
+			return fmt.Errorf("server shutdown failed: %w", err)
+		}
+
+		fmt.Println("Server stopped gracefully")
 		return nil
 	},
 }

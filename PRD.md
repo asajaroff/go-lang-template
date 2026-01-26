@@ -9,7 +9,7 @@ Build a go lang project template for microservices that I can reutilize.
 
 - [x] Initialize a go project with the packages as a git submodule in this repository:
 - [x] load configs and options using https://github.com/spf13/viper https://github.com/spf13/cobra
-- [ ] Write readiness probes and liveness probes in `/healthz/liveness` and `/healthz/readiness`  - readiness should fail if backend dependencies are not met
+- [x] Write readiness probes and liveness probes in `/healthz/liveness` and `/healthz/readiness`  - readiness should fail if backend dependencies are not met
 - [ ] SQL backend will be sql
 - [ ] Write API documentation with Swagger/OpenAPI
 - [ ] Add a docker container with minimal dependencies and according security constrains
