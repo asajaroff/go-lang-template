@@ -16,7 +16,7 @@ Build a go lang project template for microservices that I can reutilize.
 - [x] Configure the program to be loaded from environment variables and cli parameters
 - [x] Enforce semver and conventional commits through `pre-commit` workflows
 - [x] use https://github.com/golang-migrate/migrate for migrations
-- [ ] Set up logging framework and default to stdout and stderr
+- [x] Set up logging framework and default to stdout and stderr
 - [ ] Add tests to test parsing of arguments, server working, 
 - [ ] create the option to provide a postgresql backend
 - [x] Add a docker container with minimal dependencies and according security constrains

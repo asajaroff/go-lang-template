@@ -12,6 +12,7 @@ import (
 	_ "github.com/asajaroff/go-lang-template/docs" // swagger docs
 	"github.com/asajaroff/go-lang-template/internal/config"
 	"github.com/asajaroff/go-lang-template/internal/health"
+	"github.com/asajaroff/go-lang-template/internal/logger"
 	"github.com/spf13/cobra"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -51,10 +52,18 @@ var rootCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Printf("Go Lang Template - Microservice\n")
-		fmt.Printf("Server: %s:%d\n", cfg.Server.Host, cfg.Server.Port)
-		fmt.Printf("Database: %s@%s:%d/%s\n", cfg.Database.User, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
-		fmt.Printf("Log Level: %s\n", cfg.Log.Level)
+		// Initialize logger
+		log := logger.New(cfg.Log)
+
+		log.Info("Starting Go Lang Template - Microservice",
+			"server_host", cfg.Server.Host,
+			"server_port", cfg.Server.Port,
+			"database_host", cfg.Database.Host,
+			"database_port", cfg.Database.Port,
+			"database_name", cfg.Database.Name,
+			"log_level", cfg.Log.Level,
+			"log_format", cfg.Log.Format,
+		)
 
 		// Set up health check handler
 		// For now, we don't have database connectivity, so we'll use an empty checker list
@@ -76,7 +85,7 @@ var rootCmd = &cobra.Command{
 		// Start server in a goroutine
 		serverErr := make(chan error, 1)
 		go func() {
-			fmt.Printf("Starting HTTP server on %s\n", addr)
+			log.Info("HTTP server listening", "address", addr)
 			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				serverErr <- err
 			}
@@ -88,21 +97,23 @@ var rootCmd = &cobra.Command{
 
 		select {
 		case err := <-serverErr:
+			log.Error("Server error", "error", err)
 			return fmt.Errorf("server error: %w", err)
 		case sig := <-quit:
-			fmt.Printf("\nReceived signal: %s\n", sig)
+			log.Info("Received shutdown signal", "signal", sig)
 		}
 
 		// Graceful shutdown
-		fmt.Println("Shutting down server...")
+		log.Info("Shutting down server gracefully")
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
 		if err := server.Shutdown(ctx); err != nil {
+			log.Error("Server shutdown failed", "error", err)
 			return fmt.Errorf("server shutdown failed: %w", err)
 		}
 
-		fmt.Println("Server stopped gracefully")
+		log.Info("Server stopped gracefully")
 		return nil
 	},
 }
