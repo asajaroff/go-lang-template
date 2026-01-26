@@ -22,7 +22,7 @@ Build a go lang project template for microservices that I can reutilize.
 - [x] Add a docker container with minimal dependencies and according security constrains
 - [x] Add tests for all the functionality implemented at this point
 - [x] Create README with setup instructions
-- [ ] Document environment variables and configuration
+- [x] Document environment variables and configuration
 - [ ] Write deployment guide for production
 - [ ] Create user guide with screenshots
 - [ ] Document database schema and relationships
