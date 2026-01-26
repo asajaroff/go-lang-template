@@ -31,6 +31,8 @@ func (m *Migrator) Up() error {
 	}
 	defer mig.Close()
 
+	// migrate.ErrNoChange is not an error - it just means the database is already up to date
+	// We only return an error if something actually went wrong
 	if err := mig.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
@@ -46,6 +48,8 @@ func (m *Migrator) Down() error {
 	}
 	defer mig.Close()
 
+	// migrate.ErrNoChange is not an error - it just means there are no migrations to roll back
+	// We only return an error if something actually went wrong
 	if err := mig.Down(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("failed to rollback migration: %w", err)
 	}
@@ -62,6 +66,8 @@ func (m *Migrator) Steps(n int) error {
 	}
 	defer mig.Close()
 
+	// migrate.ErrNoChange is not an error - it just means we can't move the requested number of steps
+	// This can happen if we're already at the latest version or there aren't enough migrations
 	if err := mig.Steps(n); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("failed to run %d migration steps: %w", n, err)
 	}
@@ -70,6 +76,7 @@ func (m *Migrator) Steps(n int) error {
 }
 
 // Version returns the current migration version
+// The dirty flag indicates whether a migration is in progress or failed mid-execution
 func (m *Migrator) Version() (uint, bool, error) {
 	mig, err := m.getMigrate()
 	if err != nil {
@@ -77,6 +84,8 @@ func (m *Migrator) Version() (uint, bool, error) {
 	}
 	defer mig.Close()
 
+	// migrate.ErrNilVersion is returned when no migrations have been run yet
+	// This is a normal state for a fresh database, not an error condition
 	version, dirty, err := mig.Version()
 	if err != nil && err != migrate.ErrNilVersion {
 		return 0, false, fmt.Errorf("failed to get migration version: %w", err)
@@ -86,6 +95,7 @@ func (m *Migrator) Version() (uint, bool, error) {
 }
 
 // Force sets the migration version without running migrations
+// This is useful for recovering from failed migrations or manual database changes
 func (m *Migrator) Force(version int) error {
 	mig, err := m.getMigrate()
 	if err != nil {
@@ -93,6 +103,8 @@ func (m *Migrator) Force(version int) error {
 	}
 	defer mig.Close()
 
+	// Force the version in the schema_migrations table without running any migrations
+	// Use with caution - this can leave your database in an inconsistent state
 	if err := mig.Force(version); err != nil {
 		return fmt.Errorf("failed to force migration version: %w", err)
 	}
@@ -102,11 +114,15 @@ func (m *Migrator) Force(version int) error {
 
 // getMigrate creates a new migrate instance
 func (m *Migrator) getMigrate() (*migrate.Migrate, error) {
+	// Create a postgres driver instance from our sql.DB connection
+	// This allows the migrate library to interact with our database
 	driver, err := postgres.WithInstance(m.db, &postgres.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create postgres driver: %w", err)
 	}
 
+	// Create the migrate instance with file-based migrations
+	// The file:// protocol indicates migrations are stored as local files
 	mig, err := migrate.NewWithDatabaseInstance(
 		fmt.Sprintf("file://%s", m.migrationsPath),
 		"postgres",

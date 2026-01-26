@@ -65,19 +65,22 @@ func LoadWithCmd(configPath string, cmd *cobra.Command) (*Config, error) {
 	}
 
 	// Read config file (optional)
+	// We allow the config file to be missing, but fail on actual read errors
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("error reading config file: %w", err)
 		}
-		// Config file not found; ignore error if desired
+		// Config file not found; this is acceptable, we'll use env vars and defaults
 	}
 
-	// Read environment variables
+	// Read environment variables with APP_ prefix
+	// The key replacer converts nested config keys (e.g., "server.port") to env var format (e.g., "APP_SERVER_PORT")
 	v.SetEnvPrefix("APP")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
 	// Bind CLI flags if command is provided
+	// This establishes the priority order: CLI flags > Env vars > Config file > Defaults
 	if cmd != nil {
 		if err := bindFlags(v, cmd); err != nil {
 			return nil, fmt.Errorf("unable to bind flags: %w", err)
@@ -94,6 +97,8 @@ func LoadWithCmd(configPath string, cmd *cobra.Command) (*Config, error) {
 }
 
 // bindFlags binds CLI flags to viper configuration
+// This creates a mapping between kebab-case CLI flags and dot-notation config keys
+// For example: --server-host maps to server.host in the config structure
 func bindFlags(v *viper.Viper, cmd *cobra.Command) error {
 	// Bind server flags
 	if err := v.BindPFlag("server.host", cmd.Flags().Lookup("server-host")); err != nil {

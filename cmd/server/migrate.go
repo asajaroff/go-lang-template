@@ -154,8 +154,10 @@ func init() {
 	migrateForceCmd.Flags().IntVarP(&migrateForce, "version", "v", 0, "version to force")
 }
 
-// openDatabase opens a database connection
+// openDatabase opens a database connection for running migrations
+// This function is separate from the main database package to avoid circular dependencies
 func openDatabase() (*sql.DB, error) {
+	// Build PostgreSQL connection string from config
 	connStr := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		cfg.Database.Host,
@@ -171,6 +173,8 @@ func openDatabase() (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
+	// Verify the connection is actually working before proceeding
+	// This catches configuration errors early
 	if err := db.Ping(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to ping database: %w", err)

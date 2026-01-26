@@ -113,19 +113,24 @@ var rootCmd = &cobra.Command{
 			Handler: mux,
 		}
 
-		// Start server in a goroutine
+		// Start server in a goroutine so we can listen for shutdown signals
+		// The buffered channel ensures we don't miss errors if they occur before we start listening
 		serverErr := make(chan error, 1)
 		go func() {
 			log.Info("HTTP server listening", "address", addr)
+			// Only send errors that aren't from graceful shutdown (http.ErrServerClosed)
 			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				serverErr <- err
 			}
 		}()
 
-		// Wait for interrupt signal or server error
+		// Set up signal handler to catch interrupt (Ctrl+C) and termination signals
+		// The buffered channel ensures we don't miss signals that arrive quickly
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
+		// Block until we receive either a server error or a shutdown signal
+		// Using select ensures we respond to whichever event happens first
 		select {
 		case err := <-serverErr:
 			log.Error("Server error", "error", err)
@@ -134,7 +139,8 @@ var rootCmd = &cobra.Command{
 			log.Info("Received shutdown signal", "signal", sig)
 		}
 
-		// Graceful shutdown
+		// Graceful shutdown: give active connections 30 seconds to complete
+		// This prevents abrupt termination of in-flight requests
 		log.Info("Shutting down server gracefully")
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()

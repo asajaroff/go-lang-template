@@ -22,6 +22,8 @@ type Config struct {
 func New(cfg Config) (*sql.DB, error) {
 	var dsn string
 
+	// Build the data source name (DSN) based on the database driver
+	// We normalize both "postgres" and "postgresql" to the same driver
 	switch cfg.Driver {
 	case "postgres", "postgresql":
 		dsn = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
@@ -30,12 +32,14 @@ func New(cfg Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("unsupported database driver: %s", cfg.Driver)
 	}
 
+	// sql.Open doesn't actually create a connection - it just validates the DSN format
 	db, err := sql.Open(cfg.Driver, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database connection: %w", err)
 	}
 
-	// Verify connection
+	// Ping verifies the connection is actually working and reachable
+	// This is where the actual network connection happens
 	if err := db.Ping(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to ping database: %w", err)

@@ -66,10 +66,14 @@ func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
 	overallStatus := StatusHealthy
 	statusCode := http.StatusOK
 
+	// Check each backend dependency (database, cache, etc.)
+	// If any dependency is unhealthy, the service is not ready to handle requests
 	for _, checker := range h.readinessCheckers {
 		if err := checker.Check(); err != nil {
 			checks[checker.Name()] = StatusUnhealthy
 			overallStatus = StatusUnhealthy
+			// Return 503 Service Unavailable to signal to load balancers/orchestrators
+			// that this instance should not receive traffic
 			statusCode = http.StatusServiceUnavailable
 		} else {
 			checks[checker.Name()] = StatusHealthy

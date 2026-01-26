@@ -77,12 +77,15 @@ func newLevelWriter(level slog.Level) io.Writer {
 
 // Write implements io.Writer
 // Routes Info/Debug to stdout and Warn/Error to stderr
+// This allows for proper stream separation in containerized environments
 func (w *levelWriter) Write(p []byte) (n int, err error) {
-	// Parse the log level from the message
-	// For JSON format, look for "level":"ERROR" or "level":"WARN"
-	// For text format, look for level=ERROR or level=WARN
+	// Parse the log level from the message by checking for level indicators
+	// We support both JSON format ("level":"ERROR") and text format (level=ERROR)
+	// This string-based approach works because slog formats the level field before calling Write
 	msg := string(p)
 
+	// Check if this is a warning or error message that should go to stderr
+	// All other levels (INFO, DEBUG) go to stdout
 	if strings.Contains(msg, `"level":"ERROR"`) ||
 		strings.Contains(msg, `"level":"WARN"`) ||
 		strings.Contains(msg, "level=ERROR") ||
