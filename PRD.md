@@ -21,7 +21,7 @@ Build a go lang project template for microservices that I can reutilize.
 - [x] create the option to provide a postgresql backend
 - [x] Add a docker container with minimal dependencies and according security constrains
 - [x] Add tests for all the functionality implemented at this point
-- [ ] Create README with setup instructions
+- [x] Create README with setup instructions
 - [ ] Document environment variables and configuration
 - [ ] Write deployment guide for production
 - [ ] Create user guide with screenshots
