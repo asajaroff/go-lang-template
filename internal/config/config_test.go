@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func TestLoadDefaults(t *testing.T) {
@@ -191,5 +193,189 @@ server:
 	_, err := Load(configPath)
 	if err == nil {
 		t.Error("expected error for invalid config file, got nil")
+	}
+}
+
+func TestLoadWithCmdFlags(t *testing.T) {
+	// Create a temporary directory for testing
+	tmpDir := t.TempDir()
+	oldDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldDir)
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a test command with flags
+	cmd := &cobra.Command{
+		Use: "test",
+	}
+
+	// Add flags (matching what's in root.go)
+	cmd.Flags().String("server-host", "", "server host")
+	cmd.Flags().Int("server-port", 0, "server port")
+	cmd.Flags().String("db-driver", "", "database driver")
+	cmd.Flags().String("db-host", "", "database host")
+	cmd.Flags().Int("db-port", 0, "database port")
+	cmd.Flags().String("db-name", "", "database name")
+	cmd.Flags().String("db-user", "", "database user")
+	cmd.Flags().String("db-password", "", "database password")
+	cmd.Flags().String("db-sslmode", "", "database SSL mode")
+	cmd.Flags().String("log-level", "", "log level")
+	cmd.Flags().String("log-format", "", "log format")
+
+	// Set flag values
+	cmd.Flags().Set("server-host", "flag-host.example.com")
+	cmd.Flags().Set("server-port", "7000")
+	cmd.Flags().Set("db-host", "flag-db.example.com")
+	cmd.Flags().Set("db-port", "5435")
+	cmd.Flags().Set("db-name", "flagdb")
+	cmd.Flags().Set("db-user", "flaguser")
+	cmd.Flags().Set("db-password", "flagpass")
+	cmd.Flags().Set("db-sslmode", "verify-full")
+	cmd.Flags().Set("log-level", "error")
+	cmd.Flags().Set("log-format", "text")
+
+	cfg, err := LoadWithCmd("", cmd)
+	if err != nil {
+		t.Fatalf("LoadWithCmd() error = %v", err)
+	}
+
+	// Check values from CLI flags
+	if cfg.Server.Host != "flag-host.example.com" {
+		t.Errorf("expected server.host = 'flag-host.example.com', got '%s'", cfg.Server.Host)
+	}
+	if cfg.Server.Port != 7000 {
+		t.Errorf("expected server.port = 7000, got %d", cfg.Server.Port)
+	}
+	if cfg.Database.Host != "flag-db.example.com" {
+		t.Errorf("expected database.host = 'flag-db.example.com', got '%s'", cfg.Database.Host)
+	}
+	if cfg.Database.Port != 5435 {
+		t.Errorf("expected database.port = 5435, got %d", cfg.Database.Port)
+	}
+	if cfg.Database.Name != "flagdb" {
+		t.Errorf("expected database.name = 'flagdb', got '%s'", cfg.Database.Name)
+	}
+	if cfg.Database.User != "flaguser" {
+		t.Errorf("expected database.user = 'flaguser', got '%s'", cfg.Database.User)
+	}
+	if cfg.Database.Password != "flagpass" {
+		t.Errorf("expected database.password = 'flagpass', got '%s'", cfg.Database.Password)
+	}
+	if cfg.Database.SSLMode != "verify-full" {
+		t.Errorf("expected database.sslmode = 'verify-full', got '%s'", cfg.Database.SSLMode)
+	}
+	if cfg.Log.Level != "error" {
+		t.Errorf("expected log.level = 'error', got '%s'", cfg.Log.Level)
+	}
+	if cfg.Log.Format != "text" {
+		t.Errorf("expected log.format = 'text', got '%s'", cfg.Log.Format)
+	}
+}
+
+func TestConfigPriorityOrder(t *testing.T) {
+	// Test that CLI flags > Environment variables > Config file > Defaults
+	tmpDir := t.TempDir()
+	oldDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldDir)
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a config file
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	configContent := `
+server:
+  host: "config-host"
+  port: 8000
+log:
+  level: "info"
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set environment variables (should override config file)
+	os.Setenv("APP_SERVER_HOST", "env-host")
+	os.Setenv("APP_LOG_LEVEL", "debug")
+	defer func() {
+		os.Unsetenv("APP_SERVER_HOST")
+		os.Unsetenv("APP_LOG_LEVEL")
+	}()
+
+	// Create command with CLI flags (should override everything)
+	cmd := &cobra.Command{
+		Use: "test",
+	}
+	cmd.Flags().String("server-host", "", "server host")
+	cmd.Flags().Int("server-port", 0, "server port")
+	cmd.Flags().String("db-driver", "", "database driver")
+	cmd.Flags().String("db-host", "", "database host")
+	cmd.Flags().Int("db-port", 0, "database port")
+	cmd.Flags().String("db-name", "", "database name")
+	cmd.Flags().String("db-user", "", "database user")
+	cmd.Flags().String("db-password", "", "database password")
+	cmd.Flags().String("db-sslmode", "", "database SSL mode")
+	cmd.Flags().String("log-level", "", "log level")
+	cmd.Flags().String("log-format", "", "log format")
+
+	// Set only server-port via CLI flag
+	cmd.Flags().Set("server-port", "9000")
+
+	cfg, err := LoadWithCmd(configPath, cmd)
+	if err != nil {
+		t.Fatalf("LoadWithCmd() error = %v", err)
+	}
+
+	// server.host: env var should override config file
+	if cfg.Server.Host != "env-host" {
+		t.Errorf("expected server.host = 'env-host' (from env), got '%s'", cfg.Server.Host)
+	}
+
+	// server.port: CLI flag should override config file
+	if cfg.Server.Port != 9000 {
+		t.Errorf("expected server.port = 9000 (from CLI), got %d", cfg.Server.Port)
+	}
+
+	// log.level: env var should override config file
+	if cfg.Log.Level != "debug" {
+		t.Errorf("expected log.level = 'debug' (from env), got '%s'", cfg.Log.Level)
+	}
+
+	// log.format: should use default (no override)
+	if cfg.Log.Format != "json" {
+		t.Errorf("expected log.format = 'json' (from default), got '%s'", cfg.Log.Format)
+	}
+}
+
+func TestLoadWithCmdNilCommand(t *testing.T) {
+	// Test that LoadWithCmd works when cmd is nil (should behave like Load)
+	tmpDir := t.TempDir()
+	oldDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldDir)
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadWithCmd("", nil)
+	if err != nil {
+		t.Fatalf("LoadWithCmd() with nil cmd error = %v", err)
+	}
+
+	// Should return defaults
+	if cfg.Server.Port != 8080 {
+		t.Errorf("expected server.port = 8080, got %d", cfg.Server.Port)
 	}
 }

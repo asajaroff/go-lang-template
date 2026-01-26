@@ -44,7 +44,7 @@ var rootCmd = &cobra.Command{
 	Long:  `A microservice template built with Go, featuring configuration management, health checks, and more.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		var err error
-		cfg, err = config.Load(cfgFile)
+		cfg, err = config.LoadWithCmd(cfgFile, cmd)
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
 		}
@@ -109,14 +109,23 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file path (default is ./config.yaml)")
+
+	// Server flags
 	rootCmd.PersistentFlags().String("server-host", "", "server host (env: APP_SERVER_HOST)")
 	rootCmd.PersistentFlags().Int("server-port", 0, "server port (env: APP_SERVER_PORT)")
+
+	// Database flags
+	rootCmd.PersistentFlags().String("db-driver", "", "database driver (env: APP_DATABASE_DRIVER)")
 	rootCmd.PersistentFlags().String("db-host", "", "database host (env: APP_DATABASE_HOST)")
 	rootCmd.PersistentFlags().Int("db-port", 0, "database port (env: APP_DATABASE_PORT)")
 	rootCmd.PersistentFlags().String("db-name", "", "database name (env: APP_DATABASE_NAME)")
 	rootCmd.PersistentFlags().String("db-user", "", "database user (env: APP_DATABASE_USER)")
 	rootCmd.PersistentFlags().String("db-password", "", "database password (env: APP_DATABASE_PASSWORD)")
+	rootCmd.PersistentFlags().String("db-sslmode", "", "database SSL mode (env: APP_DATABASE_SSLMODE)")
+
+	// Log flags
 	rootCmd.PersistentFlags().String("log-level", "", "log level (env: APP_LOG_LEVEL)")
+	rootCmd.PersistentFlags().String("log-format", "", "log format (env: APP_LOG_FORMAT)")
 }
 
 // Execute runs the root command
