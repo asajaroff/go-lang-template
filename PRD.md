@@ -27,7 +27,7 @@ Build a go lang project template for microservices that I can reutilize.
 - [x] Create user guide with screenshots
 - [x] Document database schema and relationships
 - [x] Add inline code comments for complex logic
-- [ ] Create architecture diagram
+- [x] Create architecture diagram
 
 ## Success Criteria
 
