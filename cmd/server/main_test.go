@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-func TestMain(t *testing.T) {
+func TestMainFunction(t *testing.T) {
 	if os.Getenv("BE_MAIN") == "1" {
 		main()
 		return
 	}
-	cmd := exec.Command(os.Args[0], "-test.run=TestMain")
+	cmd := exec.Command(os.Args[0], "-test.run=TestMainFunction")
 	cmd.Env = append(os.Environ(), "BE_MAIN=1")
 	output, err := cmd.CombinedOutput()
 	if err != nil {

@@ -6,6 +6,8 @@ import (
 )
 
 func main() {
-	fmt.Println("Go Lang Template - Microservice")
-	os.Exit(0)
+	if err := Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }
