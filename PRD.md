@@ -25,7 +25,7 @@ Build a go lang project template for microservices that I can reutilize.
 - [x] Document environment variables and configuration
 - [x] Write deployment guide for production
 - [ ] Create user guide with screenshots
-- [ ] Document database schema and relationships
+- [x] Document database schema and relationships
 - [ ] Add inline code comments for complex logic
 - [ ] Create architecture diagram
 
