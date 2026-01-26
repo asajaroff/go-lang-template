@@ -11,6 +11,7 @@ import (
 
 	_ "github.com/asajaroff/go-lang-template/docs" // swagger docs
 	"github.com/asajaroff/go-lang-template/internal/config"
+	"github.com/asajaroff/go-lang-template/internal/database"
 	"github.com/asajaroff/go-lang-template/internal/health"
 	"github.com/asajaroff/go-lang-template/internal/logger"
 	"github.com/spf13/cobra"
@@ -65,9 +66,39 @@ var rootCmd = &cobra.Command{
 			"log_format", cfg.Log.Format,
 		)
 
+		// Initialize database connection if enabled
+		var healthCheckers []health.Checker
+		if cfg.Database.Enabled {
+			dbCfg := database.Config{
+				Driver:   cfg.Database.Driver,
+				Host:     cfg.Database.Host,
+				Port:     cfg.Database.Port,
+				Name:     cfg.Database.Name,
+				User:     cfg.Database.User,
+				Password: cfg.Database.Password,
+				SSLMode:  cfg.Database.SSLMode,
+			}
+
+			db, err := database.New(dbCfg)
+			if err != nil {
+				log.Error("Failed to connect to database", "error", err)
+				return fmt.Errorf("database connection failed: %w", err)
+			}
+			defer database.Close(db)
+
+			log.Info("Database connection established",
+				"driver", cfg.Database.Driver,
+				"host", cfg.Database.Host,
+				"database", cfg.Database.Name,
+			)
+
+			healthCheckers = append(healthCheckers, health.NewDatabaseChecker(db))
+		} else {
+			log.Info("Database connection disabled")
+		}
+
 		// Set up health check handler
-		// For now, we don't have database connectivity, so we'll use an empty checker list
-		healthHandler := health.NewHandler([]health.Checker{})
+		healthHandler := health.NewHandler(healthCheckers)
 
 		// Set up HTTP routes
 		mux := http.NewServeMux()
@@ -126,6 +157,7 @@ func init() {
 	rootCmd.PersistentFlags().Int("server-port", 0, "server port (env: APP_SERVER_PORT)")
 
 	// Database flags
+	rootCmd.PersistentFlags().Bool("db-enabled", false, "enable database connection (env: APP_DATABASE_ENABLED)")
 	rootCmd.PersistentFlags().String("db-driver", "", "database driver (env: APP_DATABASE_DRIVER)")
 	rootCmd.PersistentFlags().String("db-host", "", "database host (env: APP_DATABASE_HOST)")
 	rootCmd.PersistentFlags().Int("db-port", 0, "database port (env: APP_DATABASE_PORT)")

@@ -33,6 +33,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Server.Port != 8080 {
 		t.Errorf("expected server.port = 8080, got %d", cfg.Server.Port)
 	}
+	if cfg.Database.Enabled != false {
+		t.Errorf("expected database.enabled = false, got %v", cfg.Database.Enabled)
+	}
 	if cfg.Database.Driver != "postgres" {
 		t.Errorf("expected database.driver = 'postgres', got '%s'", cfg.Database.Driver)
 	}
@@ -220,6 +223,7 @@ func TestLoadWithCmdFlags(t *testing.T) {
 	// Add flags (matching what's in root.go)
 	cmd.Flags().String("server-host", "", "server host")
 	cmd.Flags().Int("server-port", 0, "server port")
+	cmd.Flags().Bool("db-enabled", false, "enable database connection")
 	cmd.Flags().String("db-driver", "", "database driver")
 	cmd.Flags().String("db-host", "", "database host")
 	cmd.Flags().Int("db-port", 0, "database port")
@@ -321,6 +325,7 @@ log:
 	}
 	cmd.Flags().String("server-host", "", "server host")
 	cmd.Flags().Int("server-port", 0, "server port")
+	cmd.Flags().Bool("db-enabled", false, "enable database connection")
 	cmd.Flags().String("db-driver", "", "database driver")
 	cmd.Flags().String("db-host", "", "database host")
 	cmd.Flags().Int("db-port", 0, "database port")

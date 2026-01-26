@@ -23,6 +23,7 @@ type ServerConfig struct {
 
 // DatabaseConfig holds database-related configuration
 type DatabaseConfig struct {
+	Enabled        bool
 	Driver         string
 	Host           string
 	Port           int
@@ -103,6 +104,9 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command) error {
 	}
 
 	// Bind database flags
+	if err := v.BindPFlag("database.enabled", cmd.Flags().Lookup("db-enabled")); err != nil {
+		return err
+	}
 	if err := v.BindPFlag("database.driver", cmd.Flags().Lookup("db-driver")); err != nil {
 		return err
 	}
@@ -146,6 +150,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.port", 8080)
 
 	// Database defaults
+	v.SetDefault("database.enabled", false)
 	v.SetDefault("database.driver", "postgres")
 	v.SetDefault("database.host", "localhost")
 	v.SetDefault("database.port", 5432)
