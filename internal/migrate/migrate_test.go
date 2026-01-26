@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -206,5 +207,253 @@ func TestMigratorForceError(t *testing.T) {
 
 	if err == nil {
 		t.Error("expected error when database is closed, got nil")
+	}
+}
+
+// TestNewMigratorWithNilDB tests creating migrator with nil database
+func TestNewMigratorWithNilDB(t *testing.T) {
+	migrator := NewMigrator(nil, "./migrations")
+	if migrator == nil {
+		t.Fatal("expected migrator to be non-nil")
+	}
+	if migrator.db != nil {
+		t.Error("expected db to be nil")
+	}
+}
+
+// TestNewMigratorWithEmptyPath tests creating migrator with empty path
+func TestNewMigratorWithEmptyPath(t *testing.T) {
+	db, _, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create sqlmock: %v", err)
+	}
+	defer db.Close()
+
+	migrator := NewMigrator(db, "")
+	if migrator == nil {
+		t.Fatal("expected migrator to be non-nil")
+	}
+	if migrator.migrationsPath != "" {
+		t.Errorf("expected empty migrations path, got %s", migrator.migrationsPath)
+	}
+}
+
+// TestMigratorStepsWithVariousValues tests Steps with different values
+func TestMigratorStepsWithVariousValues(t *testing.T) {
+	testCases := []struct {
+		name  string
+		steps int
+	}{
+		{"zero steps", 0},
+		{"positive steps", 5},
+		{"negative steps", -3},
+		{"large positive", 100},
+		{"large negative", -100},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("failed to create sqlmock: %v", err)
+			}
+			defer db.Close()
+
+			// Close to ensure error
+			mock.ExpectClose()
+			db.Close()
+
+			migrator := NewMigrator(db, "./migrations")
+			err = migrator.Steps(tc.steps)
+
+			if err == nil {
+				t.Error("expected error when database is closed, got nil")
+			}
+		})
+	}
+}
+
+// TestMigratorForceWithDifferentVersions tests Force with various version values
+func TestMigratorForceWithDifferentVersions(t *testing.T) {
+	testCases := []struct {
+		name    string
+		version int
+	}{
+		{"version 0", 0},
+		{"version 1", 1},
+		{"version 100", 100},
+		{"negative version", -1},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("failed to create sqlmock: %v", err)
+			}
+			defer db.Close()
+
+			// Close to ensure error
+			mock.ExpectClose()
+			db.Close()
+
+			migrator := NewMigrator(db, "./migrations")
+			err = migrator.Force(tc.version)
+
+			if err == nil {
+				t.Error("expected error when database is closed, got nil")
+			}
+		})
+	}
+}
+
+// TestMigratorWithMultipleMigrationFiles tests with multiple migration files
+func TestMigratorWithMultipleMigrationFiles(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create multiple migration files
+	migrations := []struct {
+		version int
+		name    string
+		upSQL   string
+		downSQL string
+	}{
+		{1, "create_users", "CREATE TABLE users (id SERIAL PRIMARY KEY);", "DROP TABLE users;"},
+		{2, "create_posts", "CREATE TABLE posts (id SERIAL PRIMARY KEY);", "DROP TABLE posts;"},
+		{3, "add_index", "CREATE INDEX idx_users ON users(id);", "DROP INDEX idx_users;"},
+	}
+
+	for _, mig := range migrations {
+		upFile := filepath.Join(tempDir, fmt.Sprintf("%06d_%s.up.sql", mig.version, mig.name))
+		downFile := filepath.Join(tempDir, fmt.Sprintf("%06d_%s.down.sql", mig.version, mig.name))
+
+		if err := os.WriteFile(upFile, []byte(mig.upSQL), 0644); err != nil {
+			t.Fatalf("failed to write up migration: %v", err)
+		}
+		if err := os.WriteFile(downFile, []byte(mig.downSQL), 0644); err != nil {
+			t.Fatalf("failed to write down migration: %v", err)
+		}
+	}
+
+	db, _, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create sqlmock: %v", err)
+	}
+	defer db.Close()
+
+	migrator := NewMigrator(db, tempDir)
+	if migrator == nil {
+		t.Fatal("expected migrator to be non-nil")
+	}
+
+	// Verify all migration files were created
+	for _, mig := range migrations {
+		upFile := filepath.Join(tempDir, fmt.Sprintf("%06d_%s.up.sql", mig.version, mig.name))
+		downFile := filepath.Join(tempDir, fmt.Sprintf("%06d_%s.down.sql", mig.version, mig.name))
+
+		if _, err := os.Stat(upFile); os.IsNotExist(err) {
+			t.Errorf("migration up file %s was not created", upFile)
+		}
+		if _, err := os.Stat(downFile); os.IsNotExist(err) {
+			t.Errorf("migration down file %s was not created", downFile)
+		}
+	}
+}
+
+// TestMigratorWithInvalidMigrationPath tests with various invalid paths
+func TestMigratorWithInvalidMigrationPath(t *testing.T) {
+	testCases := []string{
+		"/nonexistent/path",
+		"/root/restricted/path",
+		"../../../etc/passwd",
+		"./invalid/../../../path",
+	}
+
+	for _, path := range testCases {
+		t.Run("path_"+path, func(t *testing.T) {
+			db, _, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("failed to create sqlmock: %v", err)
+			}
+			defer db.Close()
+
+			migrator := NewMigrator(db, path)
+			_, err = migrator.getMigrate()
+
+			// Should return error for invalid paths
+			if err == nil {
+				t.Error("expected error for invalid migration path, got nil")
+			}
+		})
+	}
+}
+
+// TestMigratorWithRelativePaths tests with various relative paths
+func TestMigratorWithRelativePaths(t *testing.T) {
+	testCases := []string{
+		"./migrations",
+		"../migrations",
+		"../../migrations",
+		"migrations",
+	}
+
+	for _, path := range testCases {
+		t.Run("path_"+path, func(t *testing.T) {
+			db, _, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("failed to create sqlmock: %v", err)
+			}
+			defer db.Close()
+
+			migrator := NewMigrator(db, path)
+			if migrator == nil {
+				t.Fatal("expected migrator to be non-nil")
+			}
+			if migrator.migrationsPath != path {
+				t.Errorf("expected path %s, got %s", path, migrator.migrationsPath)
+			}
+		})
+	}
+}
+
+// TestMigratorWithSpecialCharactersInPath tests with special characters in path
+func TestMigratorWithSpecialCharactersInPath(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create subdirectory with special characters (where filesystem allows)
+	specialDir := filepath.Join(tempDir, "migrations-test_2024")
+	if err := os.MkdirAll(specialDir, 0755); err != nil {
+		t.Fatalf("failed to create directory: %v", err)
+	}
+
+	db, _, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create sqlmock: %v", err)
+	}
+	defer db.Close()
+
+	migrator := NewMigrator(db, specialDir)
+	if migrator == nil {
+		t.Fatal("expected migrator to be non-nil")
+	}
+}
+
+// TestMigratorGetMigrateWithNilDB tests getMigrate with nil database
+func TestMigratorGetMigrateWithNilDB(t *testing.T) {
+	migrator := NewMigrator(nil, "./migrations")
+
+	// This should panic or error because postgres.WithInstance doesn't handle nil DB
+	defer func() {
+		if r := recover(); r != nil {
+			// Panic is expected with nil database
+			t.Logf("Expected panic occurred: %v", r)
+		}
+	}()
+
+	_, err := migrator.getMigrate()
+
+	// If we get here without panic, check for error
+	if err == nil {
+		t.Error("expected error with nil database, got nil")
 	}
 }
