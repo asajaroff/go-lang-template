@@ -9,10 +9,28 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/asajaroff/go-lang-template/docs" // swagger docs
 	"github.com/asajaroff/go-lang-template/internal/config"
 	"github.com/asajaroff/go-lang-template/internal/health"
 	"github.com/spf13/cobra"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
+
+// @title Go Lang Template Microservice API
+// @version 1.0
+// @description A microservice template built with Go, featuring configuration management, health checks, and more.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /
+// @schemes http https
 
 var (
 	cfgFile string
@@ -46,6 +64,7 @@ var rootCmd = &cobra.Command{
 		mux := http.NewServeMux()
 		mux.HandleFunc("/healthz/liveness", healthHandler.Liveness)
 		mux.HandleFunc("/healthz/readiness", healthHandler.Readiness)
+		mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 
 		// Create HTTP server
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)

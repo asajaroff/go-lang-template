@@ -39,6 +39,12 @@ func NewHandler(readinessCheckers []Checker) *Handler {
 
 // Liveness handles the liveness probe endpoint
 // This endpoint always returns healthy if the server is running
+// @Summary Liveness probe
+// @Description Check if the service is alive
+// @Tags health
+// @Produce json
+// @Success 200 {object} Response "Service is alive"
+// @Router /healthz/liveness [get]
 func (h *Handler) Liveness(w http.ResponseWriter, r *http.Request) {
 	response := Response{
 		Status: StatusHealthy,
@@ -48,6 +54,13 @@ func (h *Handler) Liveness(w http.ResponseWriter, r *http.Request) {
 
 // Readiness handles the readiness probe endpoint
 // This endpoint checks if all backend dependencies are available
+// @Summary Readiness probe
+// @Description Check if the service is ready to handle requests (all dependencies are available)
+// @Tags health
+// @Produce json
+// @Success 200 {object} Response "Service is ready"
+// @Failure 503 {object} Response "Service is not ready"
+// @Router /healthz/readiness [get]
 func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
 	checks := make(map[string]Status)
 	overallStatus := StatusHealthy
