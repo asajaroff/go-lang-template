@@ -23,13 +23,14 @@ type ServerConfig struct {
 
 // DatabaseConfig holds database-related configuration
 type DatabaseConfig struct {
-	Driver   string
-	Host     string
-	Port     int
-	Name     string
-	User     string
-	Password string
-	SSLMode  string
+	Driver         string
+	Host           string
+	Port           int
+	Name           string
+	User           string
+	Password       string
+	SSLMode        string
+	MigrationsPath string
 }
 
 // LogConfig holds logging-related configuration
@@ -123,6 +124,9 @@ func bindFlags(v *viper.Viper, cmd *cobra.Command) error {
 	if err := v.BindPFlag("database.sslmode", cmd.Flags().Lookup("db-sslmode")); err != nil {
 		return err
 	}
+	if err := v.BindPFlag("database.migrationspath", cmd.Flags().Lookup("db-migrations-path")); err != nil {
+		return err
+	}
 
 	// Bind log flags
 	if err := v.BindPFlag("log.level", cmd.Flags().Lookup("log-level")); err != nil {
@@ -149,6 +153,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("database.user", "postgres")
 	v.SetDefault("database.password", "")
 	v.SetDefault("database.sslmode", "disable")
+	v.SetDefault("database.migrationspath", "./migrations")
 
 	// Log defaults
 	v.SetDefault("log.level", "info")

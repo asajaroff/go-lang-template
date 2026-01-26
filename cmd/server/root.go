@@ -122,6 +122,7 @@ func init() {
 	rootCmd.PersistentFlags().String("db-user", "", "database user (env: APP_DATABASE_USER)")
 	rootCmd.PersistentFlags().String("db-password", "", "database password (env: APP_DATABASE_PASSWORD)")
 	rootCmd.PersistentFlags().String("db-sslmode", "", "database SSL mode (env: APP_DATABASE_SSLMODE)")
+	rootCmd.PersistentFlags().String("db-migrations-path", "", "database migrations path (env: APP_DATABASE_MIGRATIONSPATH)")
 
 	// Log flags
 	rootCmd.PersistentFlags().String("log-level", "", "log level (env: APP_LOG_LEVEL)")

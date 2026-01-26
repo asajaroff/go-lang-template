@@ -45,6 +45,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Log.Level != "info" {
 		t.Errorf("expected log.level = 'info', got '%s'", cfg.Log.Level)
 	}
+	if cfg.Database.MigrationsPath != "./migrations" {
+		t.Errorf("expected database.migrationspath = './migrations', got '%s'", cfg.Database.MigrationsPath)
+	}
 }
 
 func TestLoadFromConfigFile(t *testing.T) {
@@ -224,6 +227,7 @@ func TestLoadWithCmdFlags(t *testing.T) {
 	cmd.Flags().String("db-user", "", "database user")
 	cmd.Flags().String("db-password", "", "database password")
 	cmd.Flags().String("db-sslmode", "", "database SSL mode")
+	cmd.Flags().String("db-migrations-path", "", "database migrations path")
 	cmd.Flags().String("log-level", "", "log level")
 	cmd.Flags().String("log-format", "", "log format")
 
@@ -324,6 +328,7 @@ log:
 	cmd.Flags().String("db-user", "", "database user")
 	cmd.Flags().String("db-password", "", "database password")
 	cmd.Flags().String("db-sslmode", "", "database SSL mode")
+	cmd.Flags().String("db-migrations-path", "", "database migrations path")
 	cmd.Flags().String("log-level", "", "log level")
 	cmd.Flags().String("log-format", "", "log format")
 
