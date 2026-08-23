@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "go-lang-template.fullname" . }}
+  labels:
+    {{- include "go-lang-template.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      # Named-port reference, not a separate values.yaml number — this way
+      # it can never drift from the container's actual port (env.port),
+      # which the Deployment's containerPort/probes already derive from.
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "go-lang-template.selectorLabels" . | nindent 4 }}

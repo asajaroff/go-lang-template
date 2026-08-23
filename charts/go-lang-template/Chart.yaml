@@ -1,0 +1,10 @@
+apiVersion: v2
+name: go-lang-template
+description: A sample Helm chart for the go-lang-template 12-factor template
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - go
+  - golang
+  - 12-factor

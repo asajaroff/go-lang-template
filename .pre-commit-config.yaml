@@ -1,44 +1,63 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+
 repos:
-  - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v3.6.0
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
     hooks:
-      - id: conventional-pre-commit
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+        # Helm templates are Go-template text, not standalone YAML — they
+        # only become valid YAML after `helm template` renders them (see
+        # `make helm-template`), so plain YAML parsing doesn't apply here.
+        exclude: ^charts/.*/templates/
+    -   id: check-json
+    -   id: check-added-large-files
+    -   id: check-executables-have-shebangs
+    -   id: detect-aws-credentials
+- repo: https://github.com/streetsidesoftware/cspell-cli
+  rev: v9.6.0
+  hooks:
+  -     id: cspell
+  -     id: cspell # Spell check changed files
         stages: [commit-msg]
-        args: []
+        name: check commit message spelling
+        args:
+          - --no-must-find-files
+          - --no-progress
+          - --no-summary
+          - --files
 
-  - repo: https://github.com/golangci/golangci-lint
-    rev: v2.1.2
-    hooks:
-      - id: golangci-lint
-        args: [--timeout=5m]
+- repo: https://github.com/compilerla/conventional-pre-commit
+  rev: v4.3.0
+  hooks:
+  - id: conventional-pre-commit
+    stages: [commit-msg]
+    args: [
+      "--strict",
+      "--verbose",
+      # Based on Angular's commit messages
+      # https://github.com/angular/angular/blob/main/contributing-docs/commit-message-guidelines.md
+      "--scopes feat, fix, refactor, tests, build, ci, changelog, docs, perf"
+  ]
 
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
-    hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-yaml
-      - id: check-added-large-files
-        args: ['--maxkb=500']
-      - id: check-merge-conflict
-      - id: detect-private-key
+- repo: https://github.com/dnephin/pre-commit-golang
+  rev: v0.5.1
+  hooks:
+  - id: go-fmt
+  - id: go-vet-mod
+  - id: go-mod-tidy
 
-  - repo: local
-    hooks:
-      - id: go-fmt
-        name: go fmt
-        entry: bash -c 'go fmt ./...'
-        language: system
-        pass_filenames: false
-
-      - id: go-vet
-        name: go vet
-        entry: bash -c 'go vet ./...'
-        language: system
-        pass_filenames: false
-
-      - id: go-test
-        name: go test
-        entry: bash -c 'go test -v ./...'
-        language: system
-        pass_filenames: false
+- repo: local
+  hooks:
+  - id: golangci-lint
+    name: golangci-lint
+    entry: golangci-lint run
+    language: system
+    types: [go]
+    pass_filenames: false

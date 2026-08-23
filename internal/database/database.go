@@ -1,57 +1,37 @@
+// Package database manages the Postgres connection pool.
+//
+// Factor VI (Processes): the app process holds no state of its own — the
+// pool is the only long-lived resource, created once at startup and closed
+// at shutdown (see cmd/server's graceful-shutdown handling), not built
+// lazily on first use.
 package database
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 
-	_ "github.com/lib/pq" // PostgreSQL driver
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Config holds database configuration
-type Config struct {
-	Driver   string
-	Host     string
-	Port     int
-	Name     string
-	User     string
-	Password string
-	SSLMode  string
-}
-
-// New creates a new database connection
-func New(cfg Config) (*sql.DB, error) {
-	var dsn string
-
-	// Build the data source name (DSN) based on the database driver
-	// We normalize both "postgres" and "postgresql" to the same driver
-	switch cfg.Driver {
-	case "postgres", "postgresql":
-		dsn = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-			cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.Name, cfg.SSLMode)
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", cfg.Driver)
-	}
-
-	// sql.Open doesn't actually create a connection - it just validates the DSN format
-	db, err := sql.Open(cfg.Driver, dsn)
+// New opens a connection pool against databaseURL. It does not block on
+// the database being reachable beyond a single ping (Factor IX: fast
+// startup) — ongoing reachability is what the readiness probe is for.
+func New(ctx context.Context, databaseURL string, maxConns int32) (*pgxpool.Pool, error) {
+	cfg, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database connection: %w", err)
+		return nil, fmt.Errorf("parsing database url: %w", err)
+	}
+	cfg.MaxConns = maxConns
+
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("creating connection pool: %w", err)
 	}
 
-	// Ping verifies the connection is actually working and reachable
-	// This is where the actual network connection happens
-	if err := db.Ping(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("pinging database: %w", err)
 	}
 
-	return db, nil
-}
-
-// Close closes the database connection
-func Close(db *sql.DB) error {
-	if db != nil {
-		return db.Close()
-	}
-	return nil
+	return pool, nil
 }
