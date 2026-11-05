@@ -4,8 +4,8 @@ Rebuilding this repo from scratch as a 12-factor Go service template, mirroring
 `fastapi-sample-app`'s structure/tooling but in idiomatic Go. The old ad-hoc scaffold
 (Cobra/Viper config, health checks, golang-migrate, slog logging, Swagger docs, optional
 Postgres — output of an earlier, unrelated AI session with a mismatched PRD) was wiped per
-go-ahead. Nothing has been committed yet — this is all uncommitted working-tree state on the
-`master` worktree at `~/Code/github.com/asajaroff/go-lang-template.git/master`.
+go-ahead. The work is committed on `feat/refactor` and open as PR #1 against `master`
+(includes the 2026-11-05 dependency bump to Go 1.26).
 
 ## Confirmed decisions (already implemented)
 
@@ -40,58 +40,29 @@ go-ahead. Nothing has been committed yet — this is all uncommitted working-tre
   `fmt`, `sqlc`, `migrate-up/down`, `docker-*`, `compose-*`, `helm-*`).
 - Baseline repo tooling copied from `git-repository-template.git` and adapted: `LICENSE`,
   `cliff.toml` (unchanged, generic), `.github/PULL_REQUEST_TEMPLATE.md` (unchanged),
-  `.pre-commit-config.yaml` (generic hooks + cspell + conventional-commits kept, Python's
-  ruff/uv hooks swapped for `dnephin/pre-commit-golang`'s `go-fmt`/`go-vet-mod`/`go-mod-tidy`
-  plus a local `golangci-lint` hook), `cspell.json` (Go/sqlc/pgx/Helm vocabulary).
+  `.pre-commit-config.yaml` (generic hooks + conventional-commits kept, Python's
+  ruff/uv hooks swapped for `dnephin/pre-commit-golang`'s `go-fmt`/`go-mod-tidy`
+  plus a local `golangci-lint` hook).
 - `.github/workflows/ci.yml` (go vet, golangci-lint-action, go test, docker build check).
 - `README.md` (Quickstart, Tests, sqlc workflow, Docker, Helm, 12-factor mapping table,
   Links) and `docs/CONTRIBUTING.md`, both mirroring the Python template's structure.
 
-**Verified so far**: `go build ./...`, `go vet ./...`, `go test ./...` (all packages pass),
-`golangci-lint run ./...` (0 issues), `helm lint`/`helm template` in default + ingress/
-autoscaling/secret-enabled states (all render correctly).
+**Verified (2026-11-05)**: `go build`, `go vet`, `go test ./...` pass; `golangci-lint run ./...`
+reports 0 issues; `sqlc generate` leaves the tree clean. Helm lint/template passed earlier.
 
 ## Not done yet
 
-1. **`CLAUDE.md`** — was about to write this (mirroring `fastapi-sample-app`'s CLAUDE.md:
-   repo purpose, architecture walkthrough per package, working-in-this-repo conventions) when
-   interrupted. No file exists yet at the repo root.
-2. **`.gitignore` cspell entry** — not re-checked against the new `.golangci.yml`/`sqlc.yaml`
-   additions; run `pre-commit run --all-files` once `.git add -A`'d to see what cspell/other
-   hooks flag (the Python template needed a couple of iterations here — expect the same).
-3. **`pre-commit run --all-files` has not been run yet** on this repo at all — the
-   `.pre-commit-config.yaml`/`cspell.json` are freshly written and unverified. This is the
-   next concrete step once resuming.
-4. **Docker build/run not verified** — same sandbox blocker as `fastapi-sample-app` (no
-   `docker` group membership / dockerd was failing to start on this host; check if that's
-   been resolved — see that repo's conversation history for the root cause: a stale running
-   kernel with no matching `/usr/lib/modules/<version>` directory, fixed by a reboot).
-5. **No commits yet** — `git status --short` currently shows the wipe (many `D` deletions of
-   the old scaffold) plus all the new files as modified/untracked, all on the `master`
-   worktree/branch. Haven't discussed branch naming for this repo (the Python template used
-   `feat/v0.0.1` off `master`) — worth asking before committing, and whether to follow the
-   same 6-commit-ish logical breakdown used for `fastapi-sample-app` (scaffold / docker /
-   helm / ci / tooling / docs).
-6. **`sqlc generate` and `golangci-lint`/`sqlc` binaries were installed into this sandbox's
-   `$HOME/go/bin`** (via `go install`) to build and verify this — a fresh clone of this repo
-   won't have them until someone runs `make install-tools`. Not a repo problem, just a note
-   for continuing in a different environment.
-7. Haven't double-checked whether `internal/items/db/` (sqlc-generated code) needs a header
-   comment in `queries.sql`/`sqlc.yaml` documented in README (partially done) but not yet
-   cross-referenced in CLAUDE.md's architecture section (blocked on item 1).
-8. No equivalent of the Python template's `TODO-review.md` yet since no `/code-review` pass
-   has been run against this new Go code — worth doing once the above is committed, mirroring
-   what surfaced real bugs (Dockerfile/README coupling, Helm targetPort drift, migration Job
-   securityContext) in the Python sibling.
+1. **`CLAUDE.md`** — not written yet (repo purpose, per-package architecture, conventions).
+2. **`pre-commit run --all-files`** — passes (2026-11-05); cspell removed, `go-vet` is now a local hook.
+3. **Docker build/run not verified** — `docker info` fails on this host (stale kernel, needs a
+   reboot). Then: `docker build`, compose db + `migrate up`, curl `/healthz/*`.
+4. **Code-review findings** — a `/code-review` pass ran on 2026-11-05; see PR #1 / follow-ups.
+5. **`pre-commit-golang`** stays at v0.5.1 (newer releases dropped hooks we use).
+6. **Distroless runtime** is still `static-debian12`; check for a Debian 13 image.
+7. `make install-tools` is needed in a fresh environment for `sqlc` and `golangci-lint`.
 
-## Suggested next steps, in order
+## Suggested next steps
 
-1. Write `CLAUDE.md`.
-2. `git add -A` and run `pre-commit run --all-files`; iterate on cspell words / hook config
-   until clean (same pattern as the Python template's session).
-3. `go test ./...` once more after any fixes from step 2 touch Go files.
-4. Ask about branch name + commit breakdown, then commit (likely via the `committer` agent,
-   same as before).
-5. Once docker is usable again: `docker build`, `docker compose up -d db` + `migrate up` +
-   `docker run`, `curl /healthz/liveness` and `/healthz/readiness`.
-6. Consider a `/code-review` pass before or shortly after the first commit.
+1. Triage code-review findings.
+2. Write `CLAUDE.md`.
+3. Verify Docker once usable.

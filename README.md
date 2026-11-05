@@ -11,6 +11,8 @@ It also carries this author's usual repo tooling: [Conventional Commits](https:/
 
 ## Quickstart
 
+Requires Go 1.26 or newer (see `go.mod`).
+
 ```bash
 go mod download                 # install dependencies (Factor II — Go modules are the
                                  # native equivalent of a package manager here, no extra tool needed)
