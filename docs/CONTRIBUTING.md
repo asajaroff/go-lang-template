@@ -16,7 +16,7 @@ cp .env.example .env   # local-only config — never commit this file
 `pre-commit install` (above) wires up hooks that run automatically on every commit and check:
 
 - JSON/YAML validity, trailing whitespace, end-of-file newlines, oversized files, missing shebangs, and accidental AWS credentials
-- Go formatting (`gofmt`), `go vet`, and `go mod tidy` staying in sync, via [pre-commit-golang](https://github.com/dnephin/pre-commit-golang)
+- Go formatting (`gofmt`) and `go mod tidy` staying in sync, via [pre-commit-golang](https://github.com/dnephin/pre-commit-golang)
 - Static analysis via [golangci-lint](https://golangci-lint.run/) (requires `make install-tools` once)
 - Commit message format, via [conventional-pre-commit](https://github.com/compilerla/conventional-pre-commit), enforced with `--strict`
 
@@ -49,7 +49,7 @@ See `Makefile` for shortcuts (`make run`, `make test`, `make lint`, `make fmt`, 
 
 Use the Conventional Commits format: `type(scope): message`.
 
-Allowed scopes are: `feat, fix, refactor, tests, build, ci, changelog, docs, perf`.
+Allowed types are: `feat, fix, refactor, test, build, ci, chore, docs, perf, revert, style`. The scope is free-form, e.g. `chore(deps): bump pgx`.
 
 ## Changelog
 

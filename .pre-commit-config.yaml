@@ -29,10 +29,10 @@ repos:
     args: [
       "--strict",
       "--verbose",
-      # Based on Angular's commit messages
+      # Types follow Angular's commit message guidelines; any scope is allowed.
       # https://github.com/angular/angular/blob/main/contributing-docs/commit-message-guidelines.md
-      "--scopes feat, fix, refactor, tests, build, ci, changelog, docs, perf"
-  ]
+      "feat", "fix", "refactor", "test", "build", "ci", "chore", "docs", "perf", "revert", "style",
+    ]
 
 - repo: https://github.com/dnephin/pre-commit-golang
   rev: v0.5.1
@@ -45,12 +45,6 @@ repos:
   - id: golangci-lint
     name: golangci-lint
     entry: golangci-lint run
-    language: system
-    types: [go]
-    pass_filenames: false
-  - id: go-vet
-    name: go vet
-    entry: go vet ./...
     language: system
     types: [go]
     pass_filenames: false

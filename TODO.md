@@ -53,7 +53,7 @@ reports 0 issues; `sqlc generate` leaves the tree clean. Helm lint/template pass
 ## Not done yet
 
 1. **`CLAUDE.md`** — written (2026-11-05).
-2. **`pre-commit run --all-files`** — passes (2026-11-05); cspell removed, `go-vet` is now a local hook.
+2. **`pre-commit run --all-files`** — passes (2026-11-05); cspell removed. `go vet` runs via golangci-lint (govet), CI and `make lint`.
 3. **Docker build/run not verified** — `docker info` fails on this host (stale kernel, needs a
    reboot). Then: `docker build`, compose db + `migrate up`, curl `/healthz/*`.
 4. **Code-review findings** — a `/code-review` pass ran on 2026-11-05; see PR #1 / follow-ups.
@@ -65,4 +65,3 @@ reports 0 issues; `sqlc generate` leaves the tree clean. Helm lint/template pass
 
 1. Triage code-review findings.
 2. Verify Docker once usable.
-3. Fix the conventional-pre-commit `--scopes` list (types vs scopes) or install the hook.

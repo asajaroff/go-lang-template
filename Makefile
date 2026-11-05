@@ -2,7 +2,7 @@
 
 install-tools:
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
 
 build:
 	go build -o bin/server ./cmd/server
