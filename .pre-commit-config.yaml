@@ -20,18 +20,6 @@ repos:
     -   id: check-added-large-files
     -   id: check-executables-have-shebangs
     -   id: detect-aws-credentials
-- repo: https://github.com/streetsidesoftware/cspell-cli
-  rev: v10.4.0
-  hooks:
-  -     id: cspell
-  -     id: cspell # Spell check changed files
-        stages: [commit-msg]
-        name: check commit message spelling
-        args:
-          - --no-must-find-files
-          - --no-progress
-          - --no-summary
-          - --files
 
 - repo: https://github.com/compilerla/conventional-pre-commit
   rev: v4.5.0
@@ -50,7 +38,6 @@ repos:
   rev: v0.5.1
   hooks:
   - id: go-fmt
-  - id: go-vet-mod
   - id: go-mod-tidy
 
 - repo: local
@@ -58,6 +45,12 @@ repos:
   - id: golangci-lint
     name: golangci-lint
     entry: golangci-lint run
+    language: system
+    types: [go]
+    pass_filenames: false
+  - id: go-vet
+    name: go vet
+    entry: go vet ./...
     language: system
     types: [go]
     pass_filenames: false

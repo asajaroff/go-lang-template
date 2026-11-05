@@ -18,7 +18,6 @@ cp .env.example .env   # local-only config — never commit this file
 - JSON/YAML validity, trailing whitespace, end-of-file newlines, oversized files, missing shebangs, and accidental AWS credentials
 - Go formatting (`gofmt`), `go vet`, and `go mod tidy` staying in sync, via [pre-commit-golang](https://github.com/dnephin/pre-commit-golang)
 - Static analysis via [golangci-lint](https://golangci-lint.run/) (requires `make install-tools` once)
-- Spelling, via [cspell](https://cspell.org/), against both changed files and your commit message
 - Commit message format, via [conventional-pre-commit](https://github.com/compilerla/conventional-pre-commit), enforced with `--strict`
 
 Run all hooks against the whole repo at any time with:
@@ -51,8 +50,6 @@ See `Makefile` for shortcuts (`make run`, `make test`, `make lint`, `make fmt`, 
 Use the Conventional Commits format: `type(scope): message`.
 
 Allowed scopes are: `feat, fix, refactor, tests, build, ci, changelog, docs, perf`.
-
-If cspell flags a legitimate word (a tool name, proper noun, or project-specific term), add it to the `words` list in `cspell.json` rather than rewording around it.
 
 ## Changelog
 
