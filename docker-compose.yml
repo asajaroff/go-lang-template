@@ -1,0 +1,38 @@
+# Local dev environment. Factor X (Dev/prod parity): this runs the exact
+# same image the Helm chart deploys — only the backing service (here, a
+# throwaway local Postgres container instead of a managed instance) and the
+# config wiring differ, never the app image itself.
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      # Override just the one value that has to differ from .env's
+      # localhost-oriented default: inside the compose network the DB is
+      # reachable at the service name "db", not "localhost".
+      DATABASE_URL: postgres://postgres:postgres@db:5432/go_lang_template?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: go_lang_template
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db-data:

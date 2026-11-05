@@ -1,53 +1,49 @@
-.PHONY: help setup-hooks test lint fmt vet build run clean install-tools
+.PHONY: install-tools build run test lint fmt sqlc migrate-up migrate-down docker-build docker-run compose-up compose-down helm-lint helm-template
 
-help: ## Show this help message
-	@echo 'Usage: make [target]'
-	@echo ''
-	@echo 'Available targets:'
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+install-tools:
+	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
 
-setup-hooks: ## Install pre-commit hooks
-	@bash scripts/setup-hooks.sh
+build:
+	go build -o bin/server ./cmd/server
 
-install-tools: ## Install required development tools
-	@echo "Installing development tools..."
-	@go install github.com/swaggo/swag/cmd/swag@latest
-	@echo "Tools installed successfully!"
+run:
+	go run ./cmd/server serve
 
-test: ## Run all tests
-	@echo "Running tests..."
-	@go test -v -race -coverprofile=coverage.out ./...
-	@go tool cover -func=coverage.out
+test:
+	go test ./...
 
-lint: ## Run linting checks
-	@echo "Running linters..."
-	@go fmt ./...
-	@go vet ./...
+lint:
+	go vet ./...
+	golangci-lint run ./...
 
-fmt: ## Format code
-	@echo "Formatting code..."
-	@go fmt ./...
+fmt:
+	gofmt -l -w .
+	golangci-lint fmt ./...
 
-vet: ## Run go vet
-	@echo "Running go vet..."
-	@go vet ./...
+sqlc:
+	sqlc generate
 
-build: ## Build the application
-	@echo "Building..."
-	@go build -o bin/server ./cmd/server
+migrate-up:
+	go run ./cmd/server migrate up
 
-run: ## Run the application
-	@echo "Running server..."
-	@go run ./cmd/server/main.go
+migrate-down:
+	go run ./cmd/server migrate down
 
-swagger: ## Generate Swagger documentation
-	@echo "Generating Swagger docs..."
-	@swag init -g cmd/server/main.go -o docs
+docker-build:
+	docker build -t go-lang-template:local .
 
-clean: ## Clean build artifacts
-	@echo "Cleaning..."
-	@rm -rf bin/
-	@rm -f coverage.out
-	@go clean
+docker-run:
+	docker run --rm -p 8000:8000 --env-file .env go-lang-template:local
 
-all: lint test build ## Run lint, test, and build
+compose-up:
+	docker compose up --build
+
+compose-down:
+	docker compose down -v
+
+helm-lint:
+	helm lint charts/go-lang-template
+
+helm-template:
+	helm template go-lang-template charts/go-lang-template

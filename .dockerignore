@@ -1,0 +1,13 @@
+.git/
+.github/
+charts/
+docs/
+*.md
+.env
+.env.*
+!.env.example
+docker-compose.yml
+docker-compose.override.yml
+.gitignore
+.dockerignore
+.golangci.yml

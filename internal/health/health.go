@@ -1,96 +1,53 @@
+// Package health implements liveness/readiness endpoints for container and
+// Kubernetes probes.
+//
+// Factor IX (Disposability): Liveness never touches the database — a slow
+// or unreachable backing service should not get the process killed.
+// Readiness does check the database (Factor IV), so the Helm chart's
+// readiness probe keeps a pod out of the Service's endpoints until it can
+// actually serve requests.
 package health
 
 import (
+	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 )
 
-// Status represents the health status of a component
-type Status string
-
-const (
-	StatusHealthy   Status = "healthy"
-	StatusUnhealthy Status = "unhealthy"
-)
-
-// Response represents the health check response
-type Response struct {
-	Status Status            `json:"status"`
-	Checks map[string]Status `json:"checks,omitempty"`
+// Pinger is the one method Readiness needs from a backing service — small
+// enough that any real dependency (a *pgxpool.Pool, a cache client, ...)
+// satisfies it without an adapter, and easy to fake in tests.
+type Pinger interface {
+	Ping(ctx context.Context) error
 }
 
-// Checker defines the interface for health check components
-type Checker interface {
-	Check() error
-	Name() string
+type status struct {
+	Status string `json:"status"`
 }
 
-// Handler manages health check endpoints
-type Handler struct {
-	readinessCheckers []Checker
+// Liveness always reports ok — see the package doc for why it never
+// touches the database.
+func Liveness(w http.ResponseWriter, _ *http.Request) {
+	writeStatus(w, http.StatusOK, "ok")
 }
 
-// NewHandler creates a new health check handler
-func NewHandler(readinessCheckers []Checker) *Handler {
-	return &Handler{
-		readinessCheckers: readinessCheckers,
-	}
-}
-
-// Liveness handles the liveness probe endpoint
-// This endpoint always returns healthy if the server is running
-// @Summary Liveness probe
-// @Description Check if the service is alive
-// @Tags health
-// @Produce json
-// @Success 200 {object} Response "Service is alive"
-// @Router /healthz/liveness [get]
-func (h *Handler) Liveness(w http.ResponseWriter, r *http.Request) {
-	response := Response{
-		Status: StatusHealthy,
-	}
-	h.writeJSON(w, http.StatusOK, response)
-}
-
-// Readiness handles the readiness probe endpoint
-// This endpoint checks if all backend dependencies are available
-// @Summary Readiness probe
-// @Description Check if the service is ready to handle requests (all dependencies are available)
-// @Tags health
-// @Produce json
-// @Success 200 {object} Response "Service is ready"
-// @Failure 503 {object} Response "Service is not ready"
-// @Router /healthz/readiness [get]
-func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
-	checks := make(map[string]Status)
-	overallStatus := StatusHealthy
-	statusCode := http.StatusOK
-
-	// Check each backend dependency (database, cache, etc.)
-	// If any dependency is unhealthy, the service is not ready to handle requests
-	for _, checker := range h.readinessCheckers {
-		if err := checker.Check(); err != nil {
-			checks[checker.Name()] = StatusUnhealthy
-			overallStatus = StatusUnhealthy
-			// Return 503 Service Unavailable to signal to load balancers/orchestrators
-			// that this instance should not receive traffic
-			statusCode = http.StatusServiceUnavailable
-		} else {
-			checks[checker.Name()] = StatusHealthy
+// Readiness reports ok only if every dependency's Ping succeeds.
+func Readiness(logger *slog.Logger, deps ...Pinger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		for _, dep := range deps {
+			if err := dep.Ping(r.Context()); err != nil {
+				logger.Error("readiness check failed", slog.Any("error", err))
+				writeStatus(w, http.StatusServiceUnavailable, "unavailable")
+				return
+			}
 		}
+		writeStatus(w, http.StatusOK, "ok")
 	}
-
-	response := Response{
-		Status: overallStatus,
-		Checks: checks,
-	}
-
-	h.writeJSON(w, statusCode, response)
 }
 
-// writeJSON writes a JSON response
-func (h *Handler) writeJSON(w http.ResponseWriter, statusCode int, data interface{}) {
+func writeStatus(w http.ResponseWriter, code int, s string) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(data)
+	w.WriteHeader(code)
+	_ = json.NewEncoder(w).Encode(status{Status: s})
 }

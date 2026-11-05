@@ -1,171 +1,69 @@
+// Package config is the single source of application configuration.
+//
+// Factor III (Config): every setting is read from the environment via
+// Viper's AutomaticEnv — there is no config file lookup and no CLI-flag
+// precedence layered on top, so there is exactly one place config comes
+// from, matching every other environment (local, CI, the Helm chart).
 package config
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-// Config holds all configuration for the application
+// Config holds every environment-sourced setting the app needs.
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	Log      LogConfig
+	AppName     string `mapstructure:"APP_NAME"`
+	Environment string `mapstructure:"ENVIRONMENT"`
+	LogLevel    string `mapstructure:"LOG_LEVEL"`
+	Port        string `mapstructure:"PORT"`
+
+	// Factor IV (Backing services): Postgres is reached only through this
+	// URL — swappable without a code change. No default: every environment
+	// must supply its own.
+	DatabaseURL      string `mapstructure:"DATABASE_URL"`
+	DatabaseMaxConns int32  `mapstructure:"DATABASE_MAX_CONNS"`
+	MigrationsPath   string `mapstructure:"MIGRATIONS_PATH"`
 }
 
-// ServerConfig holds server-related configuration
-type ServerConfig struct {
-	Host string
-	Port int
-}
-
-// DatabaseConfig holds database-related configuration
-type DatabaseConfig struct {
-	Enabled        bool
-	Driver         string
-	Host           string
-	Port           int
-	Name           string
-	User           string
-	Password       string
-	SSLMode        string
-	MigrationsPath string
-}
-
-// LogConfig holds logging-related configuration
-type LogConfig struct {
-	Level  string
-	Format string
-}
-
-// Load initializes and loads configuration from environment variables and config files
-func Load(configPath string) (*Config, error) {
-	return LoadWithCmd(configPath, nil)
-}
-
-// LoadWithCmd initializes and loads configuration from CLI flags, environment variables, and config files
-// Priority order (highest to lowest): CLI flags > Environment variables > Config file > Defaults
-func LoadWithCmd(configPath string, cmd *cobra.Command) (*Config, error) {
+// Load reads Config from the environment. `.env` is supported only as a
+// local-development convenience (see `.env.example`) — it is gitignored
+// and never present in a deployed environment, where real env vars
+// (injected by Docker Compose or the Helm chart) are all that exist.
+func Load() (Config, error) {
 	v := viper.New()
 
-	// Set default values
-	setDefaults(v)
+	v.SetDefault("APP_NAME", "go-lang-template")
+	v.SetDefault("ENVIRONMENT", "local")
+	v.SetDefault("LOG_LEVEL", "info")
+	v.SetDefault("PORT", "8000")
+	v.SetDefault("DATABASE_MAX_CONNS", 10)
+	v.SetDefault("MIGRATIONS_PATH", "migrations")
 
-	// Set config file path if provided
-	if configPath != "" {
-		v.SetConfigFile(configPath)
-	} else {
-		v.SetConfigName("config")
-		v.SetConfigType("yaml")
-		v.AddConfigPath(".")
-		v.AddConfigPath("./config")
-		v.AddConfigPath("/etc/go-lang-template")
-	}
+	v.SetConfigName(".env")
+	v.SetConfigType("env")
+	v.AddConfigPath(".")
+	// Local-dev-only convenience — a missing .env is expected and fine in
+	// every other environment, so this error is deliberately ignored.
+	_ = v.ReadInConfig()
 
-	// Read config file (optional)
-	// We allow the config file to be missing, but fail on actual read errors
-	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("error reading config file: %w", err)
-		}
-		// Config file not found; this is acceptable, we'll use env vars and defaults
-	}
-
-	// Read environment variables with APP_ prefix
-	// The key replacer converts nested config keys (e.g., "server.port") to env var format (e.g., "APP_SERVER_PORT")
-	v.SetEnvPrefix("APP")
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
-
-	// Bind CLI flags if command is provided
-	// This establishes the priority order: CLI flags > Env vars > Config file > Defaults
-	if cmd != nil {
-		if err := bindFlags(v, cmd); err != nil {
-			return nil, fmt.Errorf("unable to bind flags: %w", err)
-		}
+	for _, key := range []string{
+		"APP_NAME", "ENVIRONMENT", "LOG_LEVEL", "PORT",
+		"DATABASE_URL", "DATABASE_MAX_CONNS", "MIGRATIONS_PATH",
+	} {
+		_ = v.BindEnv(key)
 	}
 
-	// Unmarshal config into struct
-	var config Config
-	if err := v.Unmarshal(&config); err != nil {
-		return nil, fmt.Errorf("unable to decode config: %w", err)
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return Config{}, fmt.Errorf("parsing config: %w", err)
 	}
 
-	return &config, nil
-}
-
-// bindFlags binds CLI flags to viper configuration
-// This creates a mapping between kebab-case CLI flags and dot-notation config keys
-// For example: --server-host maps to server.host in the config structure
-func bindFlags(v *viper.Viper, cmd *cobra.Command) error {
-	// Bind server flags
-	if err := v.BindPFlag("server.host", cmd.Flags().Lookup("server-host")); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("server.port", cmd.Flags().Lookup("server-port")); err != nil {
-		return err
+	if cfg.DatabaseURL == "" {
+		return Config{}, fmt.Errorf("DATABASE_URL is required")
 	}
 
-	// Bind database flags
-	if err := v.BindPFlag("database.enabled", cmd.Flags().Lookup("db-enabled")); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("database.driver", cmd.Flags().Lookup("db-driver")); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("database.host", cmd.Flags().Lookup("db-host")); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("database.port", cmd.Flags().Lookup("db-port")); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("database.name", cmd.Flags().Lookup("db-name")); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("database.user", cmd.Flags().Lookup("db-user")); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("database.password", cmd.Flags().Lookup("db-password")); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("database.sslmode", cmd.Flags().Lookup("db-sslmode")); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("database.migrationspath", cmd.Flags().Lookup("db-migrations-path")); err != nil {
-		return err
-	}
-
-	// Bind log flags
-	if err := v.BindPFlag("log.level", cmd.Flags().Lookup("log-level")); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("log.format", cmd.Flags().Lookup("log-format")); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// setDefaults sets default configuration values
-func setDefaults(v *viper.Viper) {
-	// Server defaults
-	v.SetDefault("server.host", "0.0.0.0")
-	v.SetDefault("server.port", 8080)
-
-	// Database defaults
-	v.SetDefault("database.enabled", false)
-	v.SetDefault("database.driver", "postgres")
-	v.SetDefault("database.host", "localhost")
-	v.SetDefault("database.port", 5432)
-	v.SetDefault("database.name", "app")
-	v.SetDefault("database.user", "postgres")
-	v.SetDefault("database.password", "")
-	v.SetDefault("database.sslmode", "disable")
-	v.SetDefault("database.migrationspath", "./migrations")
-
-	// Log defaults
-	v.SetDefault("log.level", "info")
-	v.SetDefault("log.format", "json")
+	return cfg, nil
 }

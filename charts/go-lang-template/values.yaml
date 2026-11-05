@@ -1,0 +1,115 @@
+replicaCount: 2
+
+image:
+  repository: go-lang-template
+  tag: ""  # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 80
+  # No separate targetPort here — the Service always forwards to the
+  # container's named "http" port, which is derived from env.port below.
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: go-lang-template.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 75
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Factor III (Config): plain, non-secret settings. Anything sensitive
+# (DATABASE_URL, credentials) belongs in a Secret, referenced below via
+# `env.existingSecret` — never here and never templated into a ConfigMap.
+env:
+  appName: go-lang-template
+  environment: production
+  logLevel: info
+  port: 8000
+
+  # Factor IV (Backing services): the chart does not create or bundle a
+  # database — it expects the environment to attach one via a pre-existing
+  # Secret with a DATABASE_URL key. Point this at whatever your platform's
+  # secret-management convention produces. Note the plain "postgres://" DSN
+  # scheme (pgx/golang-migrate) here, not the Python sibling template's
+  # "postgresql+asyncpg://".
+  existingSecret: "go-lang-template-secrets"
+  existingSecretDatabaseUrlKey: "DATABASE_URL"
+
+# Set to true only for quick local/demo installs where you want the chart
+# to create the Secret itself from a literal value below. Never do this in
+# a real environment — inject secrets via your platform's secret manager.
+secret:
+  create: false
+  databaseUrl: ""
+
+metrics:
+  # Adds prometheus.io/* pod annotations so any annotation-based scrape
+  # config (plain Prometheus or vmagent) picks this pod up automatically.
+  # No ServiceMonitor/VMServiceScrape CRD required — the tradeoff is that
+  # scraping stays paused if the environment relies on CRD-based discovery
+  # instead.
+  enabled: true
+  path: /metrics
+  port: 8000  # must match env.port — the app doesn't listen anywhere else
+
+probes:
+  liveness:
+    path: /healthz/liveness
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readiness:
+    path: /healthz/readiness
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+# Factor XII (Admin processes): run schema migrations as a one-off Job
+# before the new Deployment rolls out, using the same image/config — the
+# same compiled binary the Deployment runs, just a different subcommand.
+migrationJob:
+  enabled: true
+  command: ["/app/server", "migrate", "up"]
+  backoffLimit: 2
