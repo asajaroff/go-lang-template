@@ -52,7 +52,7 @@ reports 0 issues; `sqlc generate` leaves the tree clean. Helm lint/template pass
 
 ## Not done yet
 
-1. **`CLAUDE.md`** — not written yet (repo purpose, per-package architecture, conventions).
+1. **`CLAUDE.md`** — written (2026-11-05).
 2. **`pre-commit run --all-files`** — passes (2026-11-05); cspell removed, `go-vet` is now a local hook.
 3. **Docker build/run not verified** — `docker info` fails on this host (stale kernel, needs a
    reboot). Then: `docker build`, compose db + `migrate up`, curl `/healthz/*`.
@@ -64,5 +64,5 @@ reports 0 issues; `sqlc generate` leaves the tree clean. Helm lint/template pass
 ## Suggested next steps
 
 1. Triage code-review findings.
-2. Write `CLAUDE.md`.
-3. Verify Docker once usable.
+2. Verify Docker once usable.
+3. Fix the conventional-pre-commit `--scopes` list (types vs scopes) or install the hook.
