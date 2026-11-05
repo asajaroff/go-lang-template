@@ -25,7 +25,7 @@ go-ahead. Nothing has been committed yet — this is all uncommitted working-tre
 - Sample `items` CRUD resource (create/list/get/update/delete) — `internal/items/`
   (`queries.sql`, generated `db/`, `dto.go`, `handlers.go`), with unit tests against an
   in-memory fake `Querier` (no real Postgres needed for `go test ./...`).
-- Multi-stage `Dockerfile`: `golang:1.25-bookworm` builder → static binary (`CGO_ENABLED=0`)
+- Multi-stage `Dockerfile`: `golang:1.26-bookworm` builder → static binary (`CGO_ENABLED=0`)
   → `gcr.io/distroless/static-debian12:nonroot` runtime. No shell in the runtime image, so no
   Docker `HEALTHCHECK` (documented tradeoff — Kubernetes probes are the real mechanism).
 - `docker-compose.yml` (app + Postgres, `env_file: .env` + a `DATABASE_URL` override for the

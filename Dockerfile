@@ -3,7 +3,7 @@
 # --- builder -------------------------------------------------------------
 # Factor II (Dependencies): resolved and built from a locked, committed
 # manifest (go.mod/go.sum) — nothing pulled from ambient system packages.
-FROM golang:1.25-bookworm AS builder
+FROM golang:1.26-bookworm AS builder
 
 WORKDIR /src
 
