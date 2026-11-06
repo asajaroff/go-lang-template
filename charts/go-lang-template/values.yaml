@@ -73,9 +73,8 @@ env:
   # Factor IV (Backing services): the chart does not create or bundle a
   # database — it expects the environment to attach one via a pre-existing
   # Secret with a DATABASE_URL key. Point this at whatever your platform's
-  # secret-management convention produces. Note the plain "postgres://" DSN
-  # scheme (pgx/golang-migrate) here, not the Python sibling template's
-  # "postgresql+asyncpg://".
+  # secret-management convention produces. Use the plain "postgres://" DSN
+  # scheme (pgx/golang-migrate).
   existingSecret: "go-lang-template-secrets"
   existingSecretDatabaseUrlKey: "DATABASE_URL"
 

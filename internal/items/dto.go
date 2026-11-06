@@ -11,10 +11,8 @@ import (
 )
 
 // createRequest / updateRequest / response are the wire (JSON) shapes —
-// kept distinct from itemsdb.Item (the DB row shape) the same way
-// SQLAlchemy models and Pydantic schemas are kept distinct in the Python
-// sibling template: the API contract and the storage schema are allowed to
-// evolve independently.
+// kept distinct from itemsdb.Item (the DB row shape) so the API contract
+// and the storage schema can evolve independently.
 type createRequest struct {
 	Name        string  `json:"name"`
 	Description *string `json:"description,omitempty"`
