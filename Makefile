@@ -1,4 +1,4 @@
-.PHONY: install-tools build run test lint fmt sqlc migrate-up migrate-down docker-build docker-run compose-up compose-down helm-lint helm-template
+.PHONY: changelog install-tools build run test lint fmt sqlc migrate-up migrate-down docker-build docker-run compose-up compose-down helm-lint helm-template
 
 install-tools:
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
@@ -47,3 +47,8 @@ helm-lint:
 
 helm-template:
 	helm template go-lang-template charts/go-lang-template
+
+# Usage: make changelog TAG=v0.1.0 (needs Docker)
+changelog:
+	@test -n "$(TAG)" || (echo "usage: make changelog TAG=vX.Y.Z" && exit 1)
+	docker run --rm -v "$(CURDIR)":/app/ orhunp/git-cliff:latest --tag $(TAG) -o CHANGELOG.md
