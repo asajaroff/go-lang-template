@@ -11,10 +11,8 @@ import (
 	itemsdb "github.com/asajaroff/go-lang-template/internal/items/db"
 )
 
-// fakeQuerier is an in-memory stand-in for itemsdb.Querier — the same
-// dependency-substitution pattern the Python sibling template uses to
-// override its DB session for tests, just expressed as a Go interface
-// instead of a FastAPI dependency override.
+// fakeQuerier is an in-memory stand-in for itemsdb.Querier, so handler
+// tests need no database.
 type fakeQuerier struct {
 	items map[uuid.UUID]itemsdb.Item
 }

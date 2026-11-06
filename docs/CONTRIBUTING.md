@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for contributing! This project follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary) and [Git Flow](https://about.gitlab.com/blog/what-is-gitflow/#what-is-gitflow).
+Thanks for contributing! This project follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary) and [Git Flow](https://about.gitlab.com/blog/what-is-gitflow/#what-is-gitflow) (see Branching and releases below).
 
 ## Setup
 
@@ -51,15 +51,29 @@ Use the Conventional Commits format: `type(scope): message`.
 
 Allowed types are: `feat, fix, refactor, test, build, ci, chore, docs, perf, revert, style`. The scope is free-form, e.g. `chore(deps): bump pgx`.
 
+## Branching and releases
+
+Git Flow: `develop` is the integration branch and `master` holds released code.
+
+1. Branch from `develop` (`feat/...`, `fix/...`) and open a PR back to `develop`.
+2. To release, branch `release/vX.Y.Z` from `develop`, run `make changelog TAG=vX.Y.Z`, and commit the updated `CHANGELOG.md`.
+3. Merge the release branch into `master`, tag it `vX.Y.Z` and push the tag, then merge `master` back into `develop`.
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`: it builds and pushes the image to `ghcr.io/<owner>/<repo>` and creates a GitHub Release with notes from git-cliff.
+
 ## Changelog
 
-`CHANGELOG` is generated, not hand-written. Regenerate it from commit history with [git-cliff](https://git-cliff.org/):
+`CHANGELOG.md` is generated, not hand-written. Regenerate it from commit history with [git-cliff](https://git-cliff.org/) (uses Docker):
 
 ```bash
-docker run -t -v "$(pwd)":/app/ "orhunp/git-cliff:${TAG:-latest}"
+make changelog TAG=v0.1.0
 ```
 
 See `cliff.toml` for how commits are grouped into sections.
+
+## Dependency updates
+
+Dependabot (`.github/dependabot.yml`) opens weekly PRs for Go modules, GitHub Actions and the Dockerfile base images, titled `build(deps): ...` / `ci(deps): ...` so they pass the commit hook.
 
 ## Pull requests
 

@@ -52,12 +52,8 @@ Configuration is env-only; copy `.env.example` to `.env` for local runs.
   `securityContext` the same as the Deployment's.
 - The runtime image is distroless with no shell, so there is no Docker `HEALTHCHECK`;
   Kubernetes probes are the health mechanism.
+- Git Flow: branch off `develop`, PR back to `develop`; releases are tagged on `master`.
 - Commits: conventional commits with a scope (`chore(deps): ...`); the changelog comes from
-  git-cliff. `pre-commit install` also installs the strict `commit-msg` hook; any scope is
+  git-cliff (`make changelog TAG=vX.Y.Z`). `pre-commit install` also installs the strict `commit-msg` hook; any scope is
   allowed, the types are listed in `.pre-commit-config.yaml`.
 - Run `make lint test` and `pre-commit run --all-files` before pushing.
-
-## Status
-
-`TODO.md` tracks what is verified and what is still open (Docker build/run is unverified on
-the dev host).
