@@ -9,6 +9,27 @@ It also carries this author's usual repo tooling: [Conventional Commits](https:/
 + [Git Flow](https://about.gitlab.com/blog/what-is-gitflow/#what-is-gitflow), enforced by
 `pre-commit` hooks, plus a `git-cliff`-generated `CHANGELOG`.
 
+## Using this template
+
+Click **Use this template** on GitHub, clone your new repo, then rename the project. Set the
+three variables, then run the rest from the repo root:
+
+```bash
+NEW_MODULE=github.com/acme/my-service   # your Go module path
+NEW_NAME=my-service                      # used for the chart, image, app name and DB name
+
+git rm -q TODO.md                        # template status notes, not yours
+git grep -lz -e go-lang-template -e go_lang_template -- . ':!go.sum' | xargs -0 sed -i \
+  -e "s#github.com/asajaroff/go-lang-template#$NEW_MODULE#g" \
+  -e "s#go-lang-template#$NEW_NAME#g" \
+  -e "s#go_lang_template#${NEW_NAME//-/_}#g"
+git mv charts/go-lang-template charts/$NEW_NAME
+go mod tidy && make test
+```
+
+Then replace the sample `items` resource with your own (see `CLAUDE.md`), update the
+`LICENSE`, and run `pre-commit install`.
+
 ## Quickstart
 
 Requires Go 1.26 or newer (see `go.mod`).
