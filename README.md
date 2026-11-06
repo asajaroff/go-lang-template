@@ -5,9 +5,10 @@ A batteries-included template for a [12-factor](https://12factor.net/) Go servic
 `golang-migrate` migrations, a distroless multi-stage `Dockerfile`, `docker-compose.yml` for
 local dev, and a sample Helm chart for deploying to Kubernetes.
 
-It also carries this author's usual repo tooling: [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary)
-+ [Git Flow](https://about.gitlab.com/blog/what-is-gitflow/#what-is-gitflow), enforced by
-`pre-commit` hooks, plus a `git-cliff`-generated `CHANGELOG`.
+It also ships repo tooling: [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary)
+and [Git Flow](https://about.gitlab.com/blog/what-is-gitflow/#what-is-gitflow) branching, enforced by
+`pre-commit` hooks and CI, a `git-cliff`-generated `CHANGELOG`, Dependabot, and a tag-driven
+release workflow that publishes the image to GHCR. See `docs/CONTRIBUTING.md`.
 
 ## Using this template
 
@@ -18,13 +19,14 @@ three variables, then run the rest from the repo root:
 NEW_MODULE=github.com/acme/my-service   # your Go module path
 NEW_NAME=my-service                      # used for the chart, image, app name and DB name
 
-git rm -q TODO.md                        # template status notes, not yours
 git grep -lz -e go-lang-template -e go_lang_template -- . ':!go.sum' | xargs -0 sed -i \
   -e "s#github.com/asajaroff/go-lang-template#$NEW_MODULE#g" \
   -e "s#go-lang-template#$NEW_NAME#g" \
   -e "s#go_lang_template#${NEW_NAME//-/_}#g"
 git mv charts/go-lang-template charts/$NEW_NAME
 go mod tidy && make test
+
+git switch -c develop && git push -u origin develop   # Git Flow: branch work off develop
 ```
 
 Then replace the sample `items` resource with your own (see `CLAUDE.md`), update the
@@ -63,8 +65,7 @@ go test ./...
 ```
 
 The `items` handler tests run against an in-memory fake implementing the same `Querier`
-interface `sqlc` generates — no external services required, the same dependency-substitution
-idea the Python sibling template uses for its DB session.
+interface `sqlc` generates — no external services required.
 
 ## Database access: sqlc
 
@@ -82,8 +83,7 @@ docker run --rm -p 8000:8000 --env-file .env go-lang-template
 
 The runtime image is `distroless/static-debian12:nonroot` — no shell, no package manager,
 runs as an unprivileged user by default. The compiled binary reads `$PORT` itself (Factor
-VII), so there's no shell-form `CMD` needed to expand it the way the Python sibling template
-needs.
+VII), so no shell-form `CMD` is needed to expand it.
 
 ## Helm
 
